@@ -1,2 +1,2 @@
-# BD-Traffic-Analysis
-A predictive model for traffic accidents.
+# Welcome!
+This is a predictor for traffic accidents.
