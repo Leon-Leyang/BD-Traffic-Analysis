@@ -29,3 +29,6 @@ lr = LogisticRegression(featuresCol="feature", labelCol="label")
 # Train the model
 model = lr.fit(df)
 
+# Stop the session
+spark.stop()
+
