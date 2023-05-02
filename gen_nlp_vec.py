@@ -40,7 +40,7 @@ if __name__ == "__main__":
 	hdfs_client = InsecureClient('http://localhost:9870', user=user_name)
 
 	# Initialize the spark session
-	spark = SparkSession.builder.appName("NLP vector generator").config("spark.driver.memory", "10g").config("spark.executor.memory", "2g").getOrCreate()
+	spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 	
 	# Meta data for the cities of interest
 	cities = {'LosAngeles': [33.700615, 34.353627, -118.683511, -118.074559], 
@@ -124,4 +124,3 @@ if __name__ == "__main__":
 		    v = [str(vec[i]) for i in range(len(vec))]
 		    v = ' '.join(v)
 		    writer.write(g + ',' + v + '\n')
-	'''
