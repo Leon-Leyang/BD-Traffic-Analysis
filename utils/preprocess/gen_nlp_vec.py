@@ -68,19 +68,21 @@ if __name__ == "__main__":
 
     # Load the word vectors
     word2vec = {}
-    with hdfs_client.read('/data/glove.6B.100d.txt', encoding='utf-8') as reader:
-        for line in reader:
-            parts = line.replace('\r', '').replace('\n', '').split(' ')
-            v = [float(parts[i]) for i in range(1, len(parts))]
-            word2vec[parts[0]] = v
+    glove_data = spark.read.text('hdfs://localhost:9000/data/glove.6B.100d.txt')
+    for row in glove_data.collect():
+        line = row[0]
+        parts = line.replace('\r', '').replace('\n', '').split(' ')
+        v = [float(parts[i]) for i in range(1, len(parts))]
+        word2vec[parts[0]] = v
 
     # Load valid geohashes
     valid_geohashes = set()
-    with hdfs_client.read('/data/geohash_to_poi_vec.csv', encoding='utf-8') as reader:
-        for line in reader:
-            if 'Geohash' in line:
-                continue
-            valid_geohashes.add(line.split(',')[0])
+    geohash_to_poi_data = spark.read.csv('hdfs://localhost:9000/data/geohash_to_poi_vec.csv', header=True, inferSchema=True)
+    for row in geohash_to_poi_data.collect():
+        line = ','.join([str(value) for value in row])
+        if 'Geohash' in line:
+            continue
+        valid_geohashes.add(line.split(',')[0])
 
     # Convert the descriptions to a list of word vectors for each georegion
     geo_to_vec = {}
