@@ -43,9 +43,6 @@ if __name__ == "__main__":
     # Initialize the spark session
     spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 
-    # Each georegion is of 5km*5km
-    geohash_prec = 5
-
     # Wrapper function for the geohash function
     geohash_udf = udf(encode_geohash, StringType())
 
@@ -81,7 +78,8 @@ if __name__ == "__main__":
     valid_geohashes = set()
     with hdfs_client.read('/data/geohash_to_poi_vec.csv', encoding='utf-8') as reader:
         for line in reader:
-            if 'Geohash' in line: continue
+            if 'Geohash' in line:
+                continue
             valid_geohashes.add(line.split(',')[0])
 
     # Convert the descriptions to a list of word vectors for each georegion

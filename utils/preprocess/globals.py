@@ -1,6 +1,9 @@
 from datetime import datetime
 
 
+# Each georegion is of 5km*5km
+geohash_prec = 5
+
 # Metadata for the cities of interest
 cities = {'LosAngeles': [33.700615, 34.353627, -118.683511, -118.074559],
           'Houston': [29.497907, 30.129003, -95.797178, -94.988191],
