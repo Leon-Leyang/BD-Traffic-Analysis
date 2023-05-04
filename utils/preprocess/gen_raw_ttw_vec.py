@@ -142,64 +142,65 @@ if __name__ == '__main__':
         z = time_zones[c]
 
         # add map-quest data
-        with hdfs_client.read(f'/data/temp/MQ_{c}_all_time.csv', encoding='utf-8') as file:
-            header = False
-            for line in file:
-                if not header:
-                    header = True
-                    continue
-                parts = line.replace('\r', '').replace('\n', '').split(',')
+        df_all = spark.read.format("csv").option("header", "true").\
+            load(f"hdfs://localhost:9000/data/temp/MQ_{c}_all_time.csv/*")
+        header = False
+        for line in df_all.collect():
+            if not header:
+                header = True
+                continue
+            parts = line.replace('\r', '').replace('\n', '').split(',')
 
-                ds = datetime.strptime(parts[5].replace('T', ' '), '%Y-%m-%d %H:%M:%S')
-                ds = ds.replace(tzinfo=pytz.utc)
-                ds = ds.astimezone(pytz.timezone(z))
-                s_interval = return_interval_index(ds, zone_to_be[z][0], zone_to_be[z][1])
-                if s_interval == -1:
-                    continue
+            ds = datetime.strptime(parts[5].replace('T', ' '), '%Y-%m-%d %H:%M:%S')
+            ds = ds.replace(tzinfo=pytz.utc)
+            ds = ds.astimezone(pytz.timezone(z))
+            s_interval = return_interval_index(ds, zone_to_be[z][0], zone_to_be[z][1])
+            if s_interval == -1:
+                continue
 
-                de = datetime.strptime(parts[6].replace('T',' '), '%Y-%m-%d %H:%M:%S')
-                de = de.replace(tzinfo=pytz.utc)
-                de = de.astimezone(pytz.timezone(z))
-                e_interval = return_interval_index(de, zone_to_be[z][0], zone_to_be[z][1])
-                if e_interval == -1:
-                    e_interval = diff-1
+            de = datetime.strptime(parts[6].replace('T',' '), '%Y-%m-%d %H:%M:%S')
+            de = de.replace(tzinfo=pytz.utc)
+            de = de.astimezone(pytz.timezone(z))
+            e_interval = return_interval_index(de, zone_to_be[z][0], zone_to_be[z][1])
+            if e_interval == -1:
+                e_interval = diff-1
 
-                start_gh = gh.encode(float(parts[8]), float(parts[9]), precision=geohash_prec)
-                intervals = []
-                if start_gh not in city_to_geohashes[c]:
-                    for i in range(diff):
-                        intervals.append({'Construction': 0, 'Congestion': 0, 'Accident': 0, 'FlowIncident': 0,
-                                          'Event': 0, 'BrokenVehicle': 0, 'RoadBlocked': 0, 'Other': 0})
+            start_gh = gh.encode(float(parts[8]), float(parts[9]), precision=geohash_prec)
+            intervals = []
+            if start_gh not in city_to_geohashes[c]:
+                for i in range(diff):
+                    intervals.append({'Construction': 0, 'Congestion': 0, 'Accident': 0, 'FlowIncident': 0,
+                                      'Event': 0, 'BrokenVehicle': 0, 'RoadBlocked': 0, 'Other': 0})
+            else:
+                intervals = city_to_geohashes[c][start_gh]
+
+            if parts[1] in name_conversion:
+                tp = name_conversion[parts[1]]
+            else:
+                tp = parts[1].split('-')[0]
+
+            for i in range(s_interval, e_interval+1):
+                v = intervals[i]
+                if tp in v:
+                    v[tp] = v[tp] + 1
                 else:
-                    intervals = city_to_geohashes[c][start_gh]
+                    v['Other'] = v['Other'] + 1
+                intervals[i] = v
 
-                if parts[1] in name_conversion:
-                    tp = name_conversion[parts[1]]
+                if tp == 'Accident':
+                    break
+
+            city_to_geohashes[c][start_gh] = intervals
+
+            ap = parts[11]
+            if len(ap) > 3:
+                if start_gh not in geocode_to_airport:
+                    geocode_to_airport[start_gh] = set([ap])
                 else:
-                    tp = parts[1].split('-')[0]
-
-                for i in range(s_interval, e_interval+1):
-                    v = intervals[i]
-                    if tp in v:
-                        v[tp] = v[tp] + 1
-                    else:
-                        v['Other'] = v['Other'] + 1
-                    intervals[i] = v
-
-                    if tp == 'Accident':
-                        break
-
-                city_to_geohashes[c][start_gh] = intervals
-
-                ap = parts[11]
-                if len(ap) > 3:
-                    if start_gh not in geocode_to_airport:
-                        geocode_to_airport[start_gh] = set([ap])
-                    else:
-                        st = geocode_to_airport[start_gh]
-                        st.add(ap)
-                        geocode_to_airport[start_gh] = st
-                    aiport_to_timezone[ap] = z
+                    st = geocode_to_airport[start_gh]
+                    st.add(ap)
+                    geocode_to_airport[start_gh] = st
+                aiport_to_timezone[ap] = z
 
     # load and sort relevant weather data
     airports_to_observations = {}
@@ -216,11 +217,13 @@ if __name__ == '__main__':
         z = aiport_to_timezone[ap]
         print(f'Airport {ap}')
         header = ''
-        if hdfs_client.status(f'/data/Sample_Weather/{ap}.csv', strict=False) is None:
+        try:
+            weather_data = spark.read.csv(f'hdfs://localhost:9000/data/Sample_Weather/{ap}.csv', header=True,
+                                          inferSchema=True)
+        except Exception as e:
             print(f'no file for Airport {ap}')
             continue
-        with hdfs_client.read(f'/data/Sample_Weather/{ap}.csv', encoding='utf-8') as file:
-            for line in file:
+        for line in weather_data.collect():
                 if 'Airport' in line:
                     header = line.replace('\r', '').replace('\n', '').replace(',Hour', '')
                     continue
@@ -321,24 +324,24 @@ if __name__ == '__main__':
     days = {}
     city = ''
 
-    with hdfs_client.read(f'/data/sample_daylight.csv', encoding='utf-8') as file:
-        for ln in file.readlines():
-            parts = ln.replace('\r', '').replace('\n', '').split(',')
+    daylight_data = spark.read.csv('hdfs://localhost:9000/data/sample_daylight.csv', header=True, inferSchema=True)
+    for ln in daylight_data.collect():
+        parts = ln.replace('\r', '').replace('\n', '').split(',')
 
-            if parts[0] != city:
-                if len(city) > 0:
-                    if city in city_days_time:
-                        _days = city_days_time[city]
-                        for _d in _days: days[_d] = _days[_d]
-                    city_days_time[city] = days
+        if parts[0] != city:
+            if len(city) > 0:
+                if city in city_days_time:
+                    _days = city_days_time[city]
+                    for _d in _days: days[_d] = _days[_d]
+                city_days_time[city] = days
 
-                city = parts[0]
-                days = {}
+            city = parts[0]
+            days = {}
 
-            sunrise = return_time(parts[2])
-            sunset = return_time(parts[3])
-            dl = DayLight(sunrise, sunset)
-            days[parts[1]] = dl
+        sunrise = return_time(parts[2])
+        sunset = return_time(parts[3])
+        dl = DayLight(sunrise, sunset)
+        days[parts[1]] = dl
 
     if city in city_days_time:
         _days = city_days_time[city]
