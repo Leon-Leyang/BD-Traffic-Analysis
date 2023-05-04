@@ -145,10 +145,12 @@ if __name__ == '__main__':
         df_all = spark.read.format("csv").option("header", "true").\
             load(f"hdfs://localhost:9000/data/temp/MQ_{c}_all_time.csv/*")
         header = False
-        for line in df_all.collect():
+        for row in df_all.collect():
             if not header:
                 header = True
                 continue
+            # Construct a string from the Row object
+            line = ','.join([str(value) for value in row])
             parts = line.replace('\r', '').replace('\n', '').split(',')
 
             ds = datetime.strptime(parts[5].replace('T', ' '), '%Y-%m-%d %H:%M:%S')
@@ -223,17 +225,18 @@ if __name__ == '__main__':
         except Exception as e:
             print(f'no file for Airport {ap}')
             continue
-        for line in weather_data.collect():
-                if 'Airport' in line:
-                    header = line.replace('\r', '').replace('\n', '').replace(',Hour', '')
-                    continue
-                parts = line.replace('\r', '').replace('\n', '').split(',')
-                try:
-                    w = Weather(parts[1] + ' ' + parts[2].split(' ')[0] + ':00 ' + parts[2].split(' ')[1], parts[3], parts[4],
-                                parts[5], parts[6], parts[7], parts[8], parts[9], parts[10], parts[11], parts[12], z)
-                    data.append(w)
-                except:
-                    continue
+        for row in weather_data.collect():
+            line = ','.join([str(value) for value in row])
+            if 'Airport' in line:
+                header = line.replace('\r', '').replace('\n', '').replace(',Hour', '')
+                continue
+            parts = line.replace('\r', '').replace('\n', '').split(',')
+            try:
+                w = Weather(parts[1] + ' ' + parts[2].split(' ')[0] + ':00 ' + parts[2].split(' ')[1], parts[3], parts[4],
+                            parts[5], parts[6], parts[7], parts[8], parts[9], parts[10], parts[11], parts[12], z)
+                data.append(w)
+            except:
+                continue
         data.sort(key=lambda x:x.date)
         airport_to_data[ap] = data
 
@@ -325,7 +328,8 @@ if __name__ == '__main__':
     city = ''
 
     daylight_data = spark.read.csv('hdfs://localhost:9000/data/sample_daylight.csv', header=True, inferSchema=True)
-    for ln in daylight_data.collect():
+    for row in daylight_data.collect():
+        ln = ','.join([str(value) for value in row])
         parts = ln.replace('\r', '').replace('\n', '').split(',')
 
         if parts[0] != city:
