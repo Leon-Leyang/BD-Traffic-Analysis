@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import pygeohash as gh
 import time
 import numpy as np
@@ -9,6 +6,7 @@ import os
 from datetime import datetime, timedelta
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import to_timestamp, date_format
+from globals import *
 
 
 class Weather:
@@ -41,7 +39,6 @@ class Weather:
 
 
 if __name__ == '__main__':
-
     spark = SparkSession.builder.appName("Raw TTW vector generator").getOrCreate()
 
     geohash_prec = 5
@@ -61,24 +58,8 @@ if __name__ == '__main__':
             "yyyy-MM-dd'T'HH:mm:ss"
         ).alias('timestamp_value'))
 
-
-    cities = {'LosAngeles': [33.700615, 34.353627, -118.683511, -118.074559],
-               'Houston': [29.497907, 30.129003, -95.797178, -94.988191],
-               'Austin': [30.079327, 30.596764, -97.968881, -97.504838],
-               'Dallas': [32.559567, 33.083278, -97.036586, -96.428928],
-               'Charlotte': [34.970168, 35.423667, -81.060925, -80.622687],
-               'Atlanta': [33.612410, 33.916999, -84.575600, -84.231911]}
-
-    time_zones = {'Houston': 'US/Central', 'Charlotte': 'US/Eastern', 'Dallas': 'US/Central',
-                  'Atlanta': 'US/Eastern', 'Austin': 'US/Central', 'LosAngeles': 'US/Pacific'}
-
-    # time interval to sample data for
-    start = datetime(2018, 6, 1)
-    finish = datetime(2018, 9, 2)
-
     begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
     end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
-
 
     for c in cities:
         crds = cities[c]
