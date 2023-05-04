@@ -47,8 +47,6 @@ os.system('hdfs dfs -put /data/cite_geo2vec/Dallas_geo2vec_201861-2018831.csv' +
 os.system('hdfs dfs -put /data/cite_geo2vec/Houston_geo2vec_201861-2018831.csv' + 'hdfs://localhost:9870/data/cite_geo2vec/Houston_geo2vec_201861-2018831.csv')
 os.system('hdfs dfs -put /data/cite_geo2vec/LosAngeles_geo2vec_201861-2018831.csv' + 'hdfs://localhost:9870/data/cite_geo2vec/LosAngeles_geo2vec_201861-2018831.csv')
 
-
-
 # geohash_map = pd.read_csv("../data/geohash_to_poi_vec.csv")
 geohash_map = spark.read.csv('hdfs://localhost:9870/data/geohash_to_poi_vec.csv', header=True, inferSchema=True)
 geohash_vec = geohash_map[[u'Amenity', u'Bump', u'Crossing', u'Give_Way',
@@ -113,11 +111,6 @@ def clean_data(filepath, storename):
     list_ = df.columns
     print(list_)
 
-    # temp_df = df[[u'TimeStep', u'T-Accident', u'Geohash', u'HOD', u'DOW', u'DayLight',
-    #               u'T-BrokenVehicle', u'T-Congestion', u'T-Construction', u'T-Event',
-    #               u'T-FlowIncident', u'T-Other', u'T-RoadBlocked', u'W-Humidity',
-    #               u'W-Precipitation', u'W-Pressure', u'W-Temperature', u'W-Visibility',
-    #               u'W-WindSpeed', u'W-Rain', u'W-Snow', u'W-Fog', u'W-Hail']]
     temp_df = df.select(u'TimeStep', u'T-Accident', u'Geohash', u'HOD', u'DOW', u'DayLight',
                    u'T-BrokenVehicle', u'T-Congestion', u'T-Construction', u'T-Event',
                    u'T-FlowIncident', u'T-Other', u'T-RoadBlocked', u'W-Humidity',
@@ -143,12 +136,6 @@ def clean_data(filepath, storename):
         return geo_dict[geohash]
 
     df = df.withColumn('geohash_code', udf(lambda x: fun_hash(x), StringType())(col('Geohash')))
-    # df['geohash_code'] = df.apply(lambda row: fun_hash(row['Geohash']), axis=1)
-    # temp_df = df[[u'TimeStep', u'T-Accident', u'Geohash', u'geohash_code', u'HOD', u'DOW', u'DayLight',
-    #               u'T-BrokenVehicle', u'T-Congestion', u'T-Construction', u'T-Event',
-    #               u'T-FlowIncident', u'T-Other', u'T-RoadBlocked', u'W-Humidity',
-    #               u'W-Precipitation', u'W-Pressure', u'W-Temperature', u'W-Visibility',
-    #               u'W-WindSpeed', u'W-Rain', u'W-Snow', u'W-Fog', u'W-Hail']]
     temp_df = df.select(u'TimeStep', u'T-Accident', u'Geohash', u'geohash_code', u'HOD', u'DOW', u'DayLight',
                   u'T-BrokenVehicle', u'T-Congestion', u'T-Construction', u'T-Event',
                   u'T-FlowIncident', u'T-Other', u'T-RoadBlocked', u'W-Humidity',
@@ -218,8 +205,6 @@ def clean_data(filepath, storename):
     temp_df.to_hdf(storename + '.h5', key='set3')
     # Save h5 to hdfs
     os.system('hdfs dfs -put ' + storename + '.h5' + 'hdfs://localhost:9870/' + storename + '.h5')
-
-
 
 cities = ['Atlanta', 'Austin', 'Charlotte', 'Dallas', 'Houston', 'LosAngeles']
 
