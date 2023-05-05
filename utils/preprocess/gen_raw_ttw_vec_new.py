@@ -3,7 +3,7 @@ import pytz
 from hdfs import InsecureClient
 from globals import *
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, lit
+from pyspark.sql.functions import udf, lit, when
 from pyspark.sql.types import IntegerType, TimestampType
 from pyspark.sql.functions import to_timestamp, from_utc_timestamp
 
@@ -147,6 +147,17 @@ def proc_traffic_data(start, finish, begin, end):
             return_interval_index_udf("EndTime(Local)", lit(zone_to_be[z][0]).cast(TimestampType()),
                                       lit(zone_to_be[z][1]).cast(TimestampType()))
         )
+
+        # Replace any -1 values in the "EndInterval" column with a default value of total_interval - 1
+        df = df.withColumn(
+            "EndInterval",
+            when(df["EndInterval"] == -1, total_interval - 1).otherwise(df["EndInterval"])
+        )
+
+        # Filter the records with StartInterval not equal to -1
+        df = df.filter(df["StartInterval"] != -1)
+
+
 
 
 
