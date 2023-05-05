@@ -3,7 +3,7 @@ import pytz
 from hdfs import InsecureClient
 from globals import *
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, lit, when
+from pyspark.sql.functions import udf, lit, when, col
 from pyspark.sql.types import IntegerType, TimestampType
 from pyspark.sql.functions import to_timestamp, from_utc_timestamp
 
@@ -149,15 +149,15 @@ def proc_traffic_data(start, finish, begin, end):
         )
 
         # Replace any -1 values in the "EndInterval" column with a default value of total_interval - 1
+        # Filter the records with StartInterval not equal to -1
         df = df.withColumn(
             "EndInterval",
             when(df["EndInterval"] == -1, total_interval - 1).otherwise(df["EndInterval"])
-        )
+        ).filter(df["StartInterval"] != -1)
 
-        # Filter the records with StartInterval not equal to -1
-        df = df.filter(df["StartInterval"] != -1)
-
-
+        # Create a new column to store the geohash of the start location
+        df = df.withColumn("StartGeohash", geohash_udf(geohash_udf(col('LocationLat').cast('float'),
+                                                                   col('LocationLng').cast('float'), "StartLongitude")))
 
 
 
