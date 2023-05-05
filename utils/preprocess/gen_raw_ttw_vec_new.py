@@ -1,6 +1,18 @@
+import getpass
 import pytz
-from datetime import datetime
+from hdfs import InsecureClient
 from globals import *
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import to_timestamp, from_utc_timestamp
+
+# Get the username
+username = getpass.getuser()
+
+# Initialize the hdfs client
+hdfs_client = InsecureClient('http://localhost:9870', user=username)
+
+# Initialize the spark session
+spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 
 
 # Class to store weather data
@@ -77,3 +89,50 @@ def returnDayLight(city_days_time, city, state, dt):
             return '1'
         else:
             return '0'
+
+
+# Function to return three dictionaries
+def proc_traffic_data(start, finish, begin, end):
+    # Convert the datetime object to a string in the format 'YYYYMMDD'
+    start_str = start.strftime('%Y%m%d')
+    finish_str = finish.strftime('%Y%m%d')
+
+    city_to_geohashes = {}
+    geocode_to_airport = {}
+    airport_to_timezone = {}
+
+    # Calculate the total number of intervals
+    total_interval = int(((end - begin).days * 24 * 60 + (end - begin).seconds / 60) / 15)
+
+    for c in cities:
+        z = time_zones[c]
+        df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*",
+                                      header=True, inferSchema=True)
+
+        # Convert StartTime(UTC) to local time in the specified timezone
+        df = df.withColumn(
+            "StartTime(Local)",
+            from_utc_timestamp(to_timestamp("StartTime(UTC)", "yyyy/MM/dd HH:mm:ss"), z)
+        ).withColumn(
+            "EndTime(Local)",
+            from_utc_timestamp(to_timestamp("EndTime(UTC)", "yyyy/MM/dd HH:mm:ss"), z)
+        )
+
+        # Convert timestamp columns to Python datetime objects
+        df = df.withColumn("StartTime(Local)", df["StartTime(Local)"].cast("timestamp")).withColumn(
+            "EndTime(Local)", df["EndTime(Local)"].cast("timestamp")
+        )
+
+
+
+if __name__ == '__main__':
+    # time interval to sample data for
+    start = datetime(2018, 6, 1)
+    finish = datetime(2018, 9, 2)
+
+    begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
+    end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
+
+    # Extract the traffic data for each city during the time interval
+    extract_t_data_4city(spark, t_data_path, start, finish)
+

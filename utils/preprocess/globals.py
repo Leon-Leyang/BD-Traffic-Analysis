@@ -34,9 +34,9 @@ def extract_t_data_4city(spark, t_data_path, start, finish):
     # Read in the traffic data
     df = spark.read.csv(t_data_path, header=True, inferSchema=True)
 
-    # Convert the time for later calculations
-    df = df.withColumn('StartTime(UTC)', to_timestamp(df['StartTime(UTC)']))
-    df = df.withColumn('EndTime(UTC)', to_timestamp(df['EndTime(UTC)']))
+    # Convert the time to datetime object for later calculations
+    df = df.withColumn('StartTime(UTC)', to_timestamp(df['StartTime(UTC)']))\
+        .withColumn('EndTime(UTC)', to_timestamp(df['EndTime(UTC)']))
 
     # Save the records that meet the spatial and temporal criteria for each city in a separate file
     for c in cities:
