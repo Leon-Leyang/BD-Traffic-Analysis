@@ -68,8 +68,8 @@ def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     geo_to_vec = {}
     for c in cities:
         # Load the traffic data for the city
-        records = spark.read.format("csv").option("header", "true")\
-            .load(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*")
+        records = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
+                                 inferSchema=True)
 
         # Generate the geohash for each record according to the latitudes and longitudes
         records_gh = records.withColumn('geohash', geohash_udf(records['LocationLat'].cast('float'),
