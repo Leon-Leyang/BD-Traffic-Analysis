@@ -4,7 +4,6 @@ import pygeohash as gh
 import numpy as np
 from hdfs import InsecureClient
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_timestamp
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 from pyspark.sql.functions import lit
@@ -46,25 +45,13 @@ if __name__ == "__main__":
     # Wrapper function for the geohash function
     geohash_udf = udf(encode_geohash, StringType())
 
-    # Read in the traffic data
-    mq = spark.read.csv('hdfs://localhost:9000/data/TrafficEvents_Aug16_Dec20_Publish.csv', header=True,
-                        inferSchema=True)
+    # A time interval of length 1 year, to be used to generate description to vector for each geographical
+    # region (or geohash)
+    start = datetime(2017, 5, 1)
+    finish = datetime(2018, 5, 31)
 
-    # Convert the time for later calculations
-    mq = mq.withColumn('StartTime(UTC)', to_timestamp(mq['StartTime(UTC)']))
-    mq = mq.withColumn('EndTime(UTC)', to_timestamp(mq['EndTime(UTC)']))
-
-    # Save the records that meet the spatial and temporal criteria for each city in a separate file
-    for c in cities:
-        crds = cities[c]
-        subset_all = mq.filter((mq['StartTime(UTC)'] >= start) &
-                               (mq['StartTime(UTC)'] < finish) &
-                               (mq['LocationLat'] > crds[0]) &
-                               (mq['LocationLat'] < crds[1]) &
-                               (mq['LocationLng'] > crds[2]) &
-                               (mq['LocationLng'] < crds[3]))
-        subset_all.write.csv('hdfs://localhost:9000/data/temp/MQ_{}_20170501_20180531.csv'.format(c), header=True,
-                             mode='overwrite')
+    # Extract the traffic data for each city during the time interval
+    extract_t_data_4city(spark, t_data_path, start, finish)
 
     # Load the word vectors
     word2vec = {}
