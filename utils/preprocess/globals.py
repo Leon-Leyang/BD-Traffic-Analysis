@@ -47,5 +47,5 @@ def extract_t_data_4city(spark, t_data_path, start, finish):
                                (df['LocationLat'] < crds[1]) &
                                (df['LocationLng'] > crds[2]) &
                                (df['LocationLng'] < crds[3]))
-        subset_all.write.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start_str}__{finish_str}.csv'.format(c),
+        subset_all.write.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv'.format(c),
                              header=True, mode='overwrite')
