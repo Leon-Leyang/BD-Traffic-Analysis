@@ -1,6 +1,8 @@
+import pygeohash as gh
 from datetime import datetime
 from pyspark.sql.functions import to_timestamp
-
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
 
 # Each georegion is of 5km*5km
 geohash_prec = 5
@@ -21,9 +23,11 @@ time_zones = {'Houston': 'US/Central', 'Charlotte': 'US/Eastern', 'Dallas': 'US/
 begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
 
-
+# Path to the traffic data
 t_data_path = 'hdfs://localhost:9000/data/TrafficEvents_Aug16_Dec20_Publish.csv'
 
+# Wrapper function for the geohash function
+geohash_udf = udf(lambda lat, lng: gh.encode(lat, lng, precision=geohash_prec), StringType())
 
 # Function to extract the traffic data for each city
 def extract_t_data_4city(spark, t_data_path, start, finish):

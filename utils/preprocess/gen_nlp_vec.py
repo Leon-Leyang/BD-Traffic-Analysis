@@ -1,11 +1,8 @@
 import getpass
 import re
-import pygeohash as gh
 import numpy as np
 from hdfs import InsecureClient
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf
-from pyspark.sql.types import StringType
 from pyspark.sql.functions import col
 from globals import *
 
@@ -61,9 +58,6 @@ def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     # Convert the datetime object to a string in the format 'YYYYMMDD'
     start_str = start.strftime('%Y%m%d')
     finish_str = finish.strftime('%Y%m%d')
-
-    # Wrapper function for the geohash function
-    geohash_udf = udf(lambda lat, lng: gh.encode(lat, lng, precision=geohash_prec), StringType())
 
     geo_to_vec = {}
     for c in cities:
