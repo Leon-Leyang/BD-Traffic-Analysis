@@ -6,6 +6,7 @@ from hdfs import InsecureClient
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
+from pyspark.sql.functions import col
 from globals import *
 
 
@@ -67,15 +68,12 @@ def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     geo_to_vec = {}
     for c in cities:
         # Load the traffic data for the city
-        df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
-                                 inferSchema=True)
-
         # Generate the geohash for each record according to the latitudes and longitudes
-        df_gh = df.withColumn('geohash', geohash_udf(df['LocationLat'].cast('float'),
-                                                               df['LocationLng'].cast('float')))
-
         # Filter out the df with invalid geohashes
-        df_vld_gh = df_gh.filter(df_gh['geohash'].isin(valid_geohashes))
+        df_vld_gh = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
+                                   inferSchema=True)\
+            .withColumn('geohash', geohash_udf(col('LocationLat').cast('float'), col('LocationLng').cast('float')))\
+            .filter(col('geohash').isin(valid_geohashes))
 
         # Iterate over each record to append the NLP vector generated from the description to the list of vectors
         # of the corresponding geohash
