@@ -67,19 +67,19 @@ def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     geo_to_vec = {}
     for c in cities:
         # Load the traffic data for the city
-        records = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
+        df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
                                  inferSchema=True)
 
         # Generate the geohash for each record according to the latitudes and longitudes
-        records_gh = records.withColumn('geohash', geohash_udf(records['LocationLat'].cast('float'),
-                                                               records['LocationLng'].cast('float')))
+        df_gh = df.withColumn('geohash', geohash_udf(df['LocationLat'].cast('float'),
+                                                               df['LocationLng'].cast('float')))
 
-        # Filter out the records with invalid geohashes
-        records_vld_gh = records_gh.filter(records_gh['geohash'].isin(valid_geohashes))
+        # Filter out the df with invalid geohashes
+        df_vld_gh = df_gh.filter(df_gh['geohash'].isin(valid_geohashes))
 
         # Iterate over each record to append the NLP vector generated from the description to the list of vectors
         # of the corresponding geohash
-        for row in records_vld_gh.rdd.collect():
+        for row in df_vld_gh.rdd.collect():
             geohash = row.geohash
 
             if geohash not in geo_to_vec:
