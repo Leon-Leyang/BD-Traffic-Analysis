@@ -57,6 +57,7 @@ def load_vld_geohash(geo_data_path):
     return valid_geohashes
 
 
+# Function to generate a list of word vectors for each valid georegion (i.e. has poi data) from its descriptions
 def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     # Convert the datetime object to a string in the format 'YYYYMMDD'
     start_str = start.strftime('%Y%m%d')
@@ -91,7 +92,12 @@ def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
     return geo_to_vec
 
 
+# Function to calculate the average vector for each geohash and save the result
 def save_geo_to_vec(r_path, geo_to_vec):
+    # If the file exists, delete it before writing to it
+    if hdfs_client.status(r_path, strict=False):
+        hdfs_client.delete(r_path)
+
     with hdfs_client.write(r_path, encoding='utf-8') as writer:
         writer.write('Geohash,vec\n')
         for g in geo_to_vec:
