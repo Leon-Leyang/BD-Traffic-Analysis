@@ -3,6 +3,8 @@ import pytz
 from hdfs import InsecureClient
 from globals import *
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf, lit
+from pyspark.sql.types import IntegerType, TimestampType
 from pyspark.sql.functions import to_timestamp, from_utc_timestamp
 
 # Get the username
@@ -104,10 +106,23 @@ def proc_traffic_data(start, finish, begin, end):
     # Calculate the total number of intervals
     total_interval = int(((end - begin).days * 24 * 60 + (end - begin).seconds / 60) / 15)
 
+    # Create a dictionary to store the begin and end time of each time zone
+    zone_to_be = {}
+    for z in ['US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific']:
+        t_begin = begin.replace(tzinfo=pytz.timezone(z))
+        t_end = end.replace(tzinfo=pytz.timezone(z))
+        zone_to_be[z] = [t_begin, t_end]
+
+    name_conversion = {'Broken-Vehicle': 'BrokenVehicle', 'Flow-Incident': 'FlowIncident',
+                       'Lane-Blocked': 'RoadBlocked'}
+
+    # Wrapper function for the return_interval_index function
+    return_interval_index_udf = udf(return_interval_index, IntegerType())
+
     for c in cities:
         z = time_zones[c]
-        df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*",
-                                      header=True, inferSchema=True)
+        df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
+                            inferSchema=True)
 
         # Convert StartTime(UTC) to local time in the specified timezone
         df = df.withColumn(
@@ -121,6 +136,16 @@ def proc_traffic_data(start, finish, begin, end):
         # Convert timestamp columns to Python datetime objects
         df = df.withColumn("StartTime(Local)", df["StartTime(Local)"].cast("timestamp")).withColumn(
             "EndTime(Local)", df["EndTime(Local)"].cast("timestamp")
+        )
+
+        # Calculate the start and end interval for each record
+        df = df.withColumn(
+            "StartInterval",
+            return_interval_index_udf("StartTime(Local)", lit(zone_to_be[z][0]), lit(zone_to_be[z][1]))
+        ).withColumn(
+            "EndInterval",
+            return_interval_index_udf("EndTime(Local)", lit(zone_to_be[z][0]).cast(TimestampType()),
+                                      lit(zone_to_be[z][1]).cast(TimestampType()))
         )
 
 
