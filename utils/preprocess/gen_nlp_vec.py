@@ -50,8 +50,6 @@ def load_vld_geohash(geo_data_path):
     geohash_to_poi_data = spark.read.csv(geo_data_path, header=True, inferSchema=True)
     for row in geohash_to_poi_data.collect():
         line = ','.join([str(value) for value in row])
-        if 'Geohash' in line:
-            continue
         valid_geohashes.add(line.split(',')[0])
 
     return valid_geohashes
