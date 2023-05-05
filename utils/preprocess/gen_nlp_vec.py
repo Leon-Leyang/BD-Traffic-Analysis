@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Convert the descriptions to a list of word vectors for each georegion
     geo_to_vec = {}
     for c in cities:
-        records = spark.read.csv('hdfs://localhost:9000/data/temp/MQ_{}_20170501_20180531.csv'.format(c), header=True,
+        records = spark.read.csv(f'hdfs://localhost:9000/data/temp/T_{start}__{finish}.csv'.format(c), header=True,
                                  inferSchema=True)
 
         records_gh = records.withColumn('start_gh', geohash_udf(records['LocationLat'].cast('float'),
