@@ -58,13 +58,17 @@ def load_vld_geohash(geo_data_path):
 
 
 def gen_geo_to_vec(start, finish, valid_geohashes, word2vec):
+    # Convert the datetime object to a string in the format 'YYYYMMDD'
+    start_str = start.strftime('%Y%m%d')
+    finish_str = finish.strftime('%Y%m%d')
+
     # Wrapper function for the geohash function
     geohash_udf = udf(lambda lat, lng: gh.encode(lat, lng, precision=geohash_prec), StringType())
 
     geo_to_vec = {}
     for c in cities:
         # Load the traffic data for the city
-        records = spark.read.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start}__{finish}.csv', header=True,
+        records = spark.read.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start_str}__{finish_str}.csv', header=True,
                                  inferSchema=True)
 
         # Generate the geohash for each record according to the latitudes and longitudes

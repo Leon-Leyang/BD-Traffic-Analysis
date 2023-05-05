@@ -27,6 +27,10 @@ t_data_path = 'hdfs://localhost:9000/data/TrafficEvents_Aug16_Dec20_Publish.csv'
 
 # Function to extract the traffic data for each city
 def extract_t_data_4city(spark, t_data_path, start, finish):
+    # Convert the datetime object to a string in the format 'YYYYMMDD'
+    start_str = start.strftime('%Y%m%d')
+    finish_str = finish.strftime('%Y%m%d')
+
     # Read in the traffic data
     df = spark.read.csv(t_data_path, header=True, inferSchema=True)
 
@@ -43,5 +47,5 @@ def extract_t_data_4city(spark, t_data_path, start, finish):
                                (df['LocationLat'] < crds[1]) &
                                (df['LocationLng'] > crds[2]) &
                                (df['LocationLng'] < crds[3]))
-        subset_all.write.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start}__{finish}.csv'.format(c), header=True,
-                             mode='overwrite')
+        subset_all.write.csv(f'hdfs://localhost:9000/data/temp/T_{c}_{start_str}__{finish_str}.csv'.format(c),
+                             header=True, mode='overwrite')
