@@ -136,3 +136,5 @@ if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
 
+    # Process the traffic data
+    proc_traffic_data(start, finish, begin, end)
