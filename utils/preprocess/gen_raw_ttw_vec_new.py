@@ -2,12 +2,13 @@ import getpass
 import pytz
 import pickle
 from hdfs import InsecureClient
-from globals import *
+from datetime import timedelta
 from haversine import haversine
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, lit, when, col
 from pyspark.sql.types import IntegerType, TimestampType, ArrayType
 from pyspark.sql.functions import to_timestamp, from_utc_timestamp, explode, length, concat
+from globals import *
 
 # Get the username
 username = getpass.getuser()
@@ -378,6 +379,26 @@ def proc_daylight_data(dl_path):
 
     return city_days_time
 
+# Function to calculate the daylight for each interval in each city
+def label_daylight_4interval(city_days_time):
+    city_to_interval_to_daylight = {}
+    states = {'Houston': 'TX', 'Charlotte': 'NC', 'Dallas': 'TX', 'Atlanta': 'GA', 'Austin': 'TX', 'LosAngeles': 'CA'}
+
+    for c in cities:
+        d_begin = begin.replace(tzinfo=pytz.timezone(time_zones[c]))
+        d_end = end.replace(tzinfo=pytz.timezone(time_zones[c]))
+
+        interval_to_daylight = {}
+        interval = 0
+        while d_begin < d_end:
+            dl = return_day_light(city_days_time, c, states[c], d_begin)
+            interval_to_daylight[interval] = dl
+            interval += 1
+            d_begin += timedelta(seconds=15*60)
+
+        city_to_interval_to_daylight[c] = interval_to_daylight
+
+    return city_to_interval_to_daylight
 
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
@@ -398,3 +419,6 @@ if __name__ == '__main__':
     # Process the daylight data
     dl_path = "hdfs://localhost:9000/data/sample_daylight.csv"
     city_days_time = proc_daylight_data(dl_path)
+
+    # Label the daylight for each interval in each city
+    city_to_interval_to_daylight = label_daylight_4interval(city_days_time)
