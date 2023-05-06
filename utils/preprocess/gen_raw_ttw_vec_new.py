@@ -59,7 +59,7 @@ class dayLight:
 
 # Function to return the index of the interval that the time stamp falls into
 def return_interval_index(time_stamp, start, end):
-    if time_stamp < start or time_stamp > end:
+    if time_stamp < start or time_stamp >= end:
         return -1
     index = int(((time_stamp - start).days * 24 * 60 + (time_stamp - start).seconds / 60) / 15)
     return index
@@ -203,10 +203,7 @@ def proc_traffic_data(start, finish, begin, end):
                 city_to_geohashes[c][geohash] = [{} for _ in range(total_interval)]
 
             event_type_sums = {et: row[f"sum({et})"] for et in event_types}
-            try:
-                city_to_geohashes[c][geohash][interval] = event_type_sums
-            except IndexError:
-                print(f"Error: Interval {interval} is out of range for geohash {geohash} in city {c}.")
+            city_to_geohashes[c][geohash][interval] = event_type_sums
 
 
 if __name__ == '__main__':
