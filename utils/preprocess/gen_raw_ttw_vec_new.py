@@ -335,8 +335,8 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
                             if ap_data.condition != '':
                                 data[i]['Condition'].add(ap_data.condition)
 
-                            if ap_data.event != '':
-                                data[i]['Event'].add(ap_data.event)
+                            if ap_data.events != '':
+                                data[i]['Event'].add(ap_data.events)
 
                         update_interval = data_idx + 1
 
