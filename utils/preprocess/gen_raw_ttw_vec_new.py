@@ -225,7 +225,7 @@ def proc_weather_data(airport_to_timezone):
     for ap in airport_to_timezone:
         z = airport_to_timezone[ap]
         df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
-            .withColumn("Time", concat(df["Date"], lit(" "), df["Hour"]))
+            .withColumn("Time", concat(col("Date"), lit(" "), col("Hour")))
 
         data = []
         for row in df.collect():
