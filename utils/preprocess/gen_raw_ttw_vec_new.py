@@ -129,7 +129,7 @@ def proc_traffic_data(start, finish, begin, end):
 
     # Calculate the interval range for each record using an array
     # If the event is an accident, the interval range is [start, start + 1), else it is [start, end + 1)
-    interval_range_udf = udf(lambda event_type, start, end: [start, start + 1] if event_type == "Accident"
+    interval_range_udf = udf(lambda event_type, start, end: [start] if event_type == "Accident"
     else list(range(start, end + 1)), ArrayType(IntegerType()))
 
     for c in cities:
@@ -203,7 +203,10 @@ def proc_traffic_data(start, finish, begin, end):
                 city_to_geohashes[c][geohash] = [{} for _ in range(total_interval)]
 
             event_type_sums = {et: row[f"sum({et})"] for et in event_types}
-            city_to_geohashes[c][geohash][interval] = event_type_sums
+            try:
+                city_to_geohashes[c][geohash][interval] = event_type_sums
+            except IndexError:
+                print(f"Error: Interval {interval} is out of range for geohash {geohash} in city {c}.")
 
 
 if __name__ == '__main__':
