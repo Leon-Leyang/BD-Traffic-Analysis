@@ -300,7 +300,7 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
             data = []
             for i in range(total_interval):
                 data.append({'Temperature': [], 'Humidity': [], 'Pressure': [], 'Visibility': [], 'WindSpeed': [],
-                             'Precipitation': [], 'Condition': [], 'Event': []})
+                             'Precipitation': [], 'Condition': set(), 'Event': set()})
 
             ap_list = geocode_to_airport[g]
             for a in ap_list:
@@ -333,24 +333,17 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
                                 data[i]['Precipitation'].append(ap_data.precipitation)
 
                             if ap_data.condition != '':
-                                data[i]['Condition'].append(ap_data.condition)
+                                data[i]['Condition'].add(ap_data.condition)
 
                             if ap_data.events != '':
-                                data[i]['Event'].append(ap_data.events)
+                                data[i]['Event'].add(ap_data.events)
 
                         update_interval = data_idx + 1
 
             geohash_to_weather[g] = data
 
-        # Remove duplicates in Condition and Event
-        for g, weather_data in geohash_to_weather.items():
-            for i, data_entry in enumerate(weather_data):
-                data_entry['Condition'] = list(set(data_entry['Condition']))
-                data_entry['Event'] = list(set(data_entry['Event']))
-                weather_data[i] = data_entry
-
         # Save the geohash_to_weather data to HDFS using hdfs_client
-        with hdfs_client.write(f"/data/temp/{c}_geo2weather.pickle", encoding='binary') as writer:
+        with hdfs_client.write(f"/data/temp/{c}_geo2weather.pickle") as writer:
             pickle.dump(geohash_to_weather, writer)
 
 
