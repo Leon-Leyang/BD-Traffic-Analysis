@@ -5,7 +5,7 @@ from globals import *
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, lit, when, col
 from pyspark.sql.types import IntegerType, TimestampType, ArrayType
-from pyspark.sql.functions import to_timestamp, from_utc_timestamp, explode, length
+from pyspark.sql.functions import to_timestamp, from_utc_timestamp, explode, length, concat
 
 # Get the username
 username = getpass.getuser()
@@ -18,7 +18,7 @@ spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 
 
 # Class to store weather data
-class weather:
+class Weather:
     date = ''
     temp = 0.0
     windchill = 0.0
@@ -33,7 +33,7 @@ class weather:
 
     def __init__(self, date, temp, windchill, humid, pressure, visib, windspeed, winddir,
                  precipitation, events, condition, zone):
-        self.date = datetime.strptime(date, '%Y-%m-%d %I:%M:%S %p')
+        self.date = datetime.strptime(date, '%Y/%m/%d%I:%M %p')
         self.date = self.date.replace(tzinfo=pytz.timezone(zone))
         self.temp = float(temp)
         self.windchill = float(windchill)
@@ -93,7 +93,7 @@ def returnDayLight(city_days_time, city, state, dt):
             return '0'
 
 
-# Function to return three dictionaries
+# Function to process the traffic data
 def proc_traffic_data(start, finish, begin, end):
     # Convert the datetime object to a string in the format 'YYYYMMDD'
     start_str = start.strftime('%Y%m%d')
@@ -216,6 +216,40 @@ def proc_traffic_data(start, finish, begin, end):
             geocode_to_airport.setdefault(row.Geohash, set()).add(row.AirportCode)
             airport_to_timezone[row.AirportCode] = z
 
+    return city_to_geohashes, geocode_to_airport, airport_to_timezone
+
+
+# Function to process the weather data
+def proc_weather_data(airport_to_timezone):
+    airport_to_data = {}
+
+    for ap in airport_to_timezone:
+        z = airport_to_timezone[ap]
+        df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
+            .withColumn("Time", concat(df["Date"], df["Hour"]))
+
+        data = [
+            Weather(
+                row["Time"],
+                row["Temp"],
+                row["WindChill"],
+                row["Humd"],
+                row["Pressure"],
+                row["Visib"],
+                row["WindSpeed"],
+                row["WindDir"],
+                row["Precipitation"],
+                row["Events"],
+                row["Conditions"],
+                z
+            )
+            for row in df.collect()
+        ]
+
+        data.sort(key=lambda x: x.date)
+        airport_to_data[ap] = data
+
+
 
 if __name__ == '__main__':
     # time interval to sample data for
@@ -229,4 +263,7 @@ if __name__ == '__main__':
     extract_t_data_4city(spark, t_data_path, start, finish)
 
     # Process the traffic data
-    proc_traffic_data(start, finish, begin, end)
+    city_to_geohashes, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
+
+    # Process the weather data
+    proc_weather_data(geocode_to_airport, airport_to_timezone)
