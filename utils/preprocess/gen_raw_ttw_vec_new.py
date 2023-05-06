@@ -342,6 +342,11 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
 
             geohash_to_weather[g] = data
 
+        # Check if the file exists in HDFS
+        # If it exists, delete it
+        if hdfs_client.status(f"/data/temp/{c}_geo2weather.pickle", strict=False):
+            hdfs_client.delete(f"/data/temp/{c}_geo2weather.pickle")
+
         # Save the geohash_to_weather data to HDFS using hdfs_client
         with hdfs_client.write(f"/data/temp/{c}_geo2weather.pickle") as writer:
             pickle.dump(geohash_to_weather, writer)
