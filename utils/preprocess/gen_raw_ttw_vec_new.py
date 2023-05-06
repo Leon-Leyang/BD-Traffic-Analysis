@@ -24,6 +24,13 @@ finish = datetime(2018, 9, 2)
 begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
 
+# A dictionary that stores the begin and end time of each time zone
+zone_to_be = {}
+for z in ['US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific']:
+    t_begin = begin.replace(tzinfo=pytz.timezone(z))
+    t_end = end.replace(tzinfo=pytz.timezone(z))
+    zone_to_be[z] = [t_begin, t_end]
+
 # Calculate the total number of intervals
 total_interval = int(((end - begin).days * 24 * 60 + (end - begin).seconds / 60) / 15)
 
@@ -112,13 +119,6 @@ def proc_traffic_data(start, finish, begin, end):
     city_to_geohashes_traffic = {}
     geocode_to_airport = {}
     airport_to_timezone = {}
-
-    # Create a dictionary to store the begin and end time of each time zone
-    zone_to_be = {}
-    for z in ['US/Eastern', 'US/Central', 'US/Mountain', 'US/Pacific']:
-        t_begin = begin.replace(tzinfo=pytz.timezone(z))
-        t_end = end.replace(tzinfo=pytz.timezone(z))
-        zone_to_be[z] = [t_begin, t_end]
 
     # Define the event types
     event_types = ['Construction', 'Congestion', 'Accident', 'FlowIncident', 'Event', 'BrokenVehicle', 'RoadBlocked',
@@ -239,7 +239,7 @@ def proc_weather_data(airport_to_timezone):
             continue
 
         # Read the csv file from HDFS
-        df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
+        df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True) \
             .withColumn("Time", concat(col("Date"), lit(" "), col("Hour")))
 
         # Get the data for the airport
@@ -291,6 +291,63 @@ def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
     return geocode_to_airport
 
 
+# Function to assign weather data to each geohash
+def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone, geocode_to_airport):
+    city_to_geohashes_weather = {}
+
+    for c in city_to_geohashes_traffic:
+        for g in city_to_geohashes_traffic[c]:
+            data = []
+            for i in range(total_interval):
+                data.append({'Temperature': [], 'Humidity': [], 'Pressure': [], 'Visibility': [], 'WindSpeed': [],
+                             'Precipitation': [], 'Condition': set(), 'Event': set()})
+
+            ap_list = geocode_to_airport[g]
+            for a in ap_list:
+                z = airport_to_timezone[a]
+                if a not in airport_to_data:
+                    continue
+                ap_data_list = airport_to_data[a]
+                update_interval = 0
+                for ap_data in ap_data_list:
+                    data_idx = return_interval_index(ap_data.date, zone_to_be[z][0], zone_to_be[z][1])
+
+                    if data_idx > -1:
+                        for i in range(update_interval, min(data_idx + 1, len(data))):
+                            if ap_data.temp > -1000:
+                                data[i]['Temperature'].append(ap_data.temp)
+
+                            if ap_data.humid > -1000:
+                                data[i]['Humidity'].append(ap_data.humid)
+
+                            if ap_data.pressure > -1000:
+                                data[i]['Pressure'].append(ap_data.pressure)
+
+                            if ap_data.visib > -1000:
+                                data[i]['Visibility'].append(ap_data.visib)
+
+                            if ap_data.windspeed > -1000:
+                                data[i]['WindSpeed'].append(ap_data.windspeed)
+
+                            if ap_data.precipitation > -1000:
+                                data[i]['Precipitation'].append(ap_data.precipitation)
+
+                            if ap_data.condition != '':
+                                data[i]['Condition'].add(ap_data.condition)
+
+                            if ap_data.event != '':
+                                data[i]['Event'].add(ap_data.event)
+
+                        update_interval = data_idx + 1
+
+            if c not in city_to_geohashes_weather:
+                city_to_geohashes_weather[c] = {}
+
+            city_to_geohashes_weather[c][g] = data
+
+    return city_to_geohashes_weather
+
+
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
@@ -304,3 +361,6 @@ if __name__ == '__main__':
     # Process the weather data
     airport_to_data = proc_weather_data(airport_to_timezone)
 
+    # Assign weather data to each geohash
+    city_to_geohashes_weather = assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone,
+                                                    geocode_to_airport)
