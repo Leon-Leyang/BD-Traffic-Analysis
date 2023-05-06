@@ -4,8 +4,8 @@ from hdfs import InsecureClient
 from globals import *
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, lit, when, col
-from pyspark.sql.types import IntegerType, TimestampType
-from pyspark.sql.functions import to_timestamp, from_utc_timestamp
+from pyspark.sql.types import IntegerType, TimestampType, ArrayType
+from pyspark.sql.functions import to_timestamp, from_utc_timestamp, explode
 
 # Get the username
 username = getpass.getuser()
@@ -113,11 +113,24 @@ def proc_traffic_data(start, finish, begin, end):
         t_end = end.replace(tzinfo=pytz.timezone(z))
         zone_to_be[z] = [t_begin, t_end]
 
+    # Define the event types
+    event_types = ['Construction', 'Congestion', 'Accident', 'FlowIncident', 'Event', 'BrokenVehicle', 'RoadBlocked',
+                   'Other']
+
+    # Mapping from the column names in the raw data to the column names in the processed data
     name_conversion = {'Broken-Vehicle': 'BrokenVehicle', 'Flow-Incident': 'FlowIncident',
                        'Lane-Blocked': 'RoadBlocked'}
 
     # Wrapper function for the return_interval_index function
     return_interval_index_udf = udf(return_interval_index, IntegerType())
+
+    # Function to convert the column names in the raw data to the column names in the processed data
+    name_conversion_udf = udf(lambda t: name_conversion.get(t, t.split('-')[0]), StringType())
+
+    # Calculate the interval range for each record using an array
+    # If the event is an accident, the interval range is [start, start + 1), else it is [start, end + 1)
+    interval_range_udf = udf(lambda event_type, start, end: [start, start + 1] if event_type == "Accident"
+    else list(range(start, end + 1)), ArrayType(IntegerType()))
 
     for c in cities:
         z = time_zones[c]
@@ -156,9 +169,42 @@ def proc_traffic_data(start, finish, begin, end):
         ).filter(df["StartInterval"] != -1)
 
         # Create a new column to store the geohash of the start location
-        df = df.withColumn("StartGeohash", geohash_udf(geohash_udf(col('LocationLat').cast('float'),
-                                                                   col('LocationLng').cast('float'), "StartLongitude")))
+        df = df.withColumn("Geohash", geohash_udf(geohash_udf(col('LocationLat').cast('float'),
+                                                              col('LocationLng').cast('float'), "StartLongitude")))
 
+        # Create a new column to store the processed event type
+        df = df.withColumn("EventType", name_conversion_udf("Type"))
+
+        # Add a column for each event type and set the value to 1 if the EventType matches the column, otherwise 0
+        for et in event_types:
+            if et != "Other":
+                df = df.withColumn(et, when(df["EventType"] == et, 1).otherwise(0))
+
+        # Create the 'Other' column
+        # If the EventType does not match any of the defined event types, set it to 1, otherwise 0
+        not_matched_event_types = ~df["EventType"].isin(event_types)
+        df = df.withColumn("Other", when(not_matched_event_types, 1).otherwise(0))
+
+        # Calculate the interval range for each record
+        df = df.withColumn("IntervalRange", interval_range_udf("EventType", "StartInterval", "EndInterval"))
+
+        # Explode the dataframe by IntervalRange and groupBy Geohash and Interval
+        df = df.selectExpr("Geohash", "IntervalRange", "AirportCode", *event_types).withColumn("Interval", explode(
+            "IntervalRange")).drop("IntervalRange")
+        df_grouped = df.groupBy("Geohash", "Interval").agg({et: "sum" for et in event_types})
+
+        # Update city_to_geohashes dictionary
+        city_to_geohashes[c] = {}
+
+        grouped_rows = df_grouped.collect()
+        for row in grouped_rows:
+            geohash = row.Geohash
+            interval = row.Interval
+            if geohash not in city_to_geohashes[c]:
+                city_to_geohashes[c][geohash] = [{} for _ in range(total_interval)]
+
+            event_type_sums = {et: row[f"sum({et})"] for et in event_types}
+            city_to_geohashes[c][geohash][interval] = event_type_sums
 
 
 if __name__ == '__main__':
