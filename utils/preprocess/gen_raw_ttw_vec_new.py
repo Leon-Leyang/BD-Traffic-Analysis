@@ -99,7 +99,7 @@ def proc_traffic_data(start, finish, begin, end):
     start_str = start.strftime('%Y%m%d')
     finish_str = finish.strftime('%Y%m%d')
 
-    city_to_geohashes = {}
+    city_to_geohashes_traffic = {}
     geocode_to_airport = {}
     airport_to_timezone = {}
 
@@ -192,8 +192,8 @@ def proc_traffic_data(start, finish, begin, end):
             "IntervalRange")).drop("IntervalRange")
         df_grouped = df.groupBy("Geohash", "Interval").agg({et: "sum" for et in event_types})
 
-        # Update city_to_geohashes dictionary
-        city_to_geohashes[c] = {}
+        # Update city_to_geohashes_traffic dictionary
+        city_to_geohashes_traffic[c] = {}
 
         # Collect the grouped rows to make a list of dictionaries of event type sums ordered by the time interval index
         # for each geohash and interval
@@ -201,12 +201,12 @@ def proc_traffic_data(start, finish, begin, end):
         for row in grouped_rows:
             geohash = row.Geohash
             interval = row.Interval
-            if geohash not in city_to_geohashes[c]:
-                city_to_geohashes[c][geohash] = [{} for _ in range(total_interval)]
+            if geohash not in city_to_geohashes_traffic[c]:
+                city_to_geohashes_traffic[c][geohash] = [{} for _ in range(total_interval)]
 
             event_type_sums = {et: row[f"sum({et})"] for et in event_types}
             try:
-                city_to_geohashes[c][geohash][interval] = event_type_sums
+                city_to_geohashes_traffic[c][geohash][interval] = event_type_sums
             except IndexError:
                 print(f"Error: Interval {interval} is out of range for geohash {geohash} in city {c}.")
 
@@ -216,7 +216,7 @@ def proc_traffic_data(start, finish, begin, end):
             geocode_to_airport.setdefault(row.Geohash, set()).add(row.AirportCode)
             airport_to_timezone[row.AirportCode] = z
 
-    return city_to_geohashes, geocode_to_airport, airport_to_timezone
+    return city_to_geohashes_traffic, geocode_to_airport, airport_to_timezone
 
 
 # Function to process the weather data
@@ -266,9 +266,9 @@ def proc_weather_data(airport_to_timezone):
 
 
 # Function to complement the missing airport data
-def complement_missing_ap(city_to_geohashes, geocode_to_airport):
-    for c in city_to_geohashes:
-        for g in city_to_geohashes[c]:
+def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
+    for c in city_to_geohashes_traffic:
+        for g in city_to_geohashes_traffic[c]:
             if g not in geocode_to_airport:
                 gc = gh.decode_exactly(g)[0:2]
                 min_dist = 1000000000
@@ -296,10 +296,10 @@ if __name__ == '__main__':
     extract_t_data_4city(spark, t_data_path, start, finish)
 
     # Process the traffic data
-    city_to_geohashes, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
+    city_to_geohashes_traffic, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
 
     # Complement the missing airport data
-    geocode_to_airport = complement_missing_ap(city_to_geohashes, geocode_to_airport)
+    geocode_to_airport = complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport)
 
     # Process the weather data
     proc_weather_data(airport_to_timezone)
