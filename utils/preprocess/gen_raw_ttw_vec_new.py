@@ -266,4 +266,4 @@ if __name__ == '__main__':
     city_to_geohashes, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
 
     # Process the weather data
-    proc_weather_data(geocode_to_airport, airport_to_timezone)
+    proc_weather_data(airport_to_timezone)
