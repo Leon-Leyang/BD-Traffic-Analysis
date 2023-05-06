@@ -2,6 +2,7 @@ import getpass
 import pytz
 from hdfs import InsecureClient
 from globals import *
+from haversine import haversine
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, lit, when, col
 from pyspark.sql.types import IntegerType, TimestampType, ArrayType
@@ -225,13 +226,16 @@ def proc_weather_data(airport_to_timezone):
     for ap in airport_to_timezone:
         z = airport_to_timezone[ap]
 
+        # Check if the file exists in HDFS
         if not hdfs_client.status(f"/data/Sample_Weather/{ap}.csv", strict=False):
             print(f"No file for airport {ap}")
             continue
 
+        # Read the csv file from HDFS
         df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
             .withColumn("Time", concat(col("Date"), lit(" "), col("Hour")))
 
+        # Get the data for the airport
         data = []
         for row in df.collect():
             try:
@@ -258,6 +262,27 @@ def proc_weather_data(airport_to_timezone):
         data.sort(key=lambda x: x.date)
         airport_to_data[ap] = data
 
+    return airport_to_data
+
+
+# Function to complement the missing airport data
+def complement_missing_ap(city_to_geohashes, geocode_to_airport):
+    for c in city_to_geohashes:
+        for g in city_to_geohashes[c]:
+            if g not in geocode_to_airport:
+                gc = gh.decode_exactly(g)[0:2]
+                min_dist = 1000000000
+                close_g = ''
+                for _g in geocode_to_airport:
+                    _gc = gh.decode_exactly(_g)[0:2]
+                    dst = haversine(gc, _gc, 'km')
+                    if dst < min_dist:
+                        min_dist = dst
+                        close_g = _g
+                geocode_to_airport[g] = geocode_to_airport[close_g]
+
+    return geocode_to_airport
+
 
 if __name__ == '__main__':
     # time interval to sample data for
@@ -272,6 +297,9 @@ if __name__ == '__main__':
 
     # Process the traffic data
     city_to_geohashes, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
+
+    # Complement the missing airport data
+    geocode_to_airport = complement_missing_ap(city_to_geohashes, geocode_to_airport)
 
     # Process the weather data
     proc_weather_data(airport_to_timezone)
