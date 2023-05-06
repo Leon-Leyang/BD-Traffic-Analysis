@@ -2,12 +2,12 @@ import getpass
 import pytz
 import pickle
 from hdfs import InsecureClient
-from datetime import timedelta
+from datetime import time, timedelta
 from haversine import haversine
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, lit, when, col
+from pyspark.sql.functions import lit, when, col
 from pyspark.sql.types import IntegerType, TimestampType, ArrayType
-from pyspark.sql.functions import to_timestamp, from_utc_timestamp, explode, length, concat
+from pyspark.sql.functions import from_utc_timestamp, explode, length, concat
 from globals import *
 
 # Get the username
@@ -100,11 +100,11 @@ def return_time(x):
 def return_day_light(city_days_time, city, state, dt):
     sc = city + '-' + state
     days = city_days_time[sc]
-    d = dt.strftime('%Y-%m-%d')
+    d = dt.strftime('%Y-%-m-%-d')
     if d in days:
         r = days[d]
-        sunrise = datetime.time(*r.sunrise)
-        sunset = datetime.time(*r.sunset)
+        sunrise = time(*r.sunrise)
+        sunset = time(*r.sunset)
         if sunrise <= dt.time() <= sunset:
             return '1'
         else:
@@ -379,6 +379,7 @@ def proc_daylight_data(dl_path):
 
     return city_days_time
 
+
 # Function to calculate the daylight for each interval in each city
 def label_daylight_4interval(city_days_time):
     city_to_interval_to_daylight = {}
@@ -399,6 +400,7 @@ def label_daylight_4interval(city_days_time):
         city_to_interval_to_daylight[c] = interval_to_daylight
 
     return city_to_interval_to_daylight
+
 
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
