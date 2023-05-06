@@ -1,6 +1,6 @@
 import getpass
 import pytz
-import json
+import pickle
 from hdfs import InsecureClient
 from globals import *
 from haversine import haversine
@@ -350,8 +350,8 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
                 weather_data[i] = data_entry
 
         # Save the geohash_to_weather data to HDFS using hdfs_client
-        with hdfs_client.write(f"/data/temp/{c}_geo2weather.json", encoding='utf-8') as writer:
-            json.dump(geohash_to_weather, writer, ensure_ascii=False)
+        with hdfs_client.write(f"/data/temp/{c}_geo2weather.pickle", encoding='binary') as writer:
+            pickle.dump(geohash_to_weather, writer)
 
 
 if __name__ == '__main__':
