@@ -16,6 +16,11 @@ hdfs_client = InsecureClient('http://localhost:9870', user=username)
 # Initialize the spark session
 spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 
+# A time interval of length 1 year, to be used to generate description to vector for each geographical
+# region (or geohash)
+start = datetime(2017, 5, 1)
+finish = datetime(2018, 5, 31)
+
 
 # Function to convert the description to a vector
 def return_desc2vec(desc, word2vec):
@@ -98,11 +103,6 @@ def save_geo_to_vec(r_path, geo_to_vec):
 
 
 if __name__ == "__main__":
-    # A time interval of length 1 year, to be used to generate description to vector for each geographical
-    # region (or geohash)
-    start = datetime(2017, 5, 1)
-    finish = datetime(2018, 5, 31)
-
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
 

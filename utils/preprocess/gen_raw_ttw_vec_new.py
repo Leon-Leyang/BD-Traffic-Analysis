@@ -17,6 +17,16 @@ hdfs_client = InsecureClient('http://localhost:9870', user=username)
 # Initialize the spark session
 spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
 
+# time interval to sample data for
+start = datetime(2018, 6, 1)
+finish = datetime(2018, 9, 2)
+
+begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
+end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
+
+# Calculate the total number of intervals
+total_interval = int(((end - begin).days * 24 * 60 + (end - begin).seconds / 60) / 15)
+
 
 # Class to store weather data
 class Weather:
@@ -102,9 +112,6 @@ def proc_traffic_data(start, finish, begin, end):
     city_to_geohashes_traffic = {}
     geocode_to_airport = {}
     airport_to_timezone = {}
-
-    # Calculate the total number of intervals
-    total_interval = int(((end - begin).days * 24 * 60 + (end - begin).seconds / 60) / 15)
 
     # Create a dictionary to store the begin and end time of each time zone
     zone_to_be = {}
@@ -285,13 +292,6 @@ def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
 
 
 if __name__ == '__main__':
-    # time interval to sample data for
-    start = datetime(2018, 6, 1)
-    finish = datetime(2018, 9, 2)
-
-    begin = datetime.strptime('2018-06-01 00:00:00', '%Y-%m-%d %H:%M:%S')
-    end = datetime.strptime('2018-08-31 23:59:59', '%Y-%m-%d %H:%M:%S')
-
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
 
@@ -302,4 +302,5 @@ if __name__ == '__main__':
     geocode_to_airport = complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport)
 
     # Process the weather data
-    proc_weather_data(airport_to_timezone)
+    airport_to_data = proc_weather_data(airport_to_timezone)
+
