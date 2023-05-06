@@ -66,7 +66,7 @@ class Weather:
 
 
 # Class to store daylight data
-class dayLight:
+class DayLight:
     sunrise = []
     sunset = []
 
@@ -355,6 +355,29 @@ def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_t
             pickle.dump(geohash_to_weather, writer)
 
 
+# Function to process the daylight data
+def proc_daylight_data(dl_path):
+    df = spark.read.csv(dl_path, header=False)
+
+    # Function to get the dictionary of the daylight data
+    # The dictionary is in the form of {city: {day: daylight}}
+    city_days_time = {}
+    for row in df.collect():
+        city = row[0]
+        if city not in city_days_time:
+            city_days_time[city] = {}
+
+        days = {}
+        sunrise = return_time(row[2])
+        sunset = return_time(row[3])
+        dl = DayLight(sunrise, sunset)
+        days[row[1]] = dl
+
+        city_days_time[city].update(days)
+
+    return city_days_time
+
+
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
@@ -370,3 +393,7 @@ if __name__ == '__main__':
 
     # Assign weather data to each geohash
     assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone, geocode_to_airport)
+
+    # Process the daylight data
+    dl_path = "hdfs://localhost:9000/data/sample_daylight.csv"
+    city_days_time = proc_daylight_data(dl_path)
