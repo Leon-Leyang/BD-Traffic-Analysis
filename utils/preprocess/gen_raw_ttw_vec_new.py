@@ -169,8 +169,7 @@ def proc_traffic_data(start, finish, begin, end):
         ).filter(df["StartInterval"] != -1)
 
         # Create a new column to store the geohash of the start location
-        df = df.withColumn("Geohash", geohash_udf(geohash_udf(col('LocationLat').cast('float'),
-                                                              col('LocationLng').cast('float'), "StartLongitude")))
+        df = df.withColumn("Geohash", geohash_udf(col('LocationLat').cast('float'), col('LocationLng').cast('float')))
 
         # Create a new column to store the processed event type
         df = df.withColumn("EventType", name_conversion_udf("Type"))
