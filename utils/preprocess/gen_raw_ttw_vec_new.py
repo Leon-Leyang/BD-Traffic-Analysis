@@ -224,6 +224,11 @@ def proc_weather_data(airport_to_timezone):
 
     for ap in airport_to_timezone:
         z = airport_to_timezone[ap]
+
+        if not hdfs_client.status(f"/data/Sample_Weather/{ap}.csv", strict=False):
+            print(f"No file for airport {ap}")
+            continue
+
         df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
             .withColumn("Time", concat(col("Date"), lit(" "), col("Hour")))
 
