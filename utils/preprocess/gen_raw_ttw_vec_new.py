@@ -230,7 +230,7 @@ def proc_weather_data(airport_to_timezone):
         data = []
         for row in df.collect():
             try:
-                time = datetime.datetime.strptime(row["Time"], '%Y-%m-%d %I:%M %p')
+                time = datetime.strptime(row["Time"], '%Y-%m-%d %I:%M %p')
                 weather = Weather(
                     time,
                     row["Temp"],
