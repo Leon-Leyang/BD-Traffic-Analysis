@@ -33,8 +33,7 @@ class Weather:
 
     def __init__(self, date, temp, windchill, humid, pressure, visib, windspeed, winddir,
                  precipitation, events, condition, zone):
-        self.date = datetime.strptime(date, '%Y/%m/%d%I:%M %p')
-        self.date = self.date.replace(tzinfo=pytz.timezone(zone))
+        self.date = date.replace(tzinfo=pytz.timezone(zone))
         self.temp = float(temp)
         self.windchill = float(windchill)
         self.humid = float(humid)
@@ -226,29 +225,33 @@ def proc_weather_data(airport_to_timezone):
     for ap in airport_to_timezone:
         z = airport_to_timezone[ap]
         df = spark.read.csv(f"hdfs://localhost:9000/data/Sample_Weather/{ap}.csv", header=True, inferSchema=True)\
-            .withColumn("Time", concat(df["Date"], df["Hour"]))
+            .withColumn("Time", concat(df["Date"], lit(" "), df["Hour"]))
 
-        data = [
-            Weather(
-                row["Time"],
-                row["Temp"],
-                row["WindChill"],
-                row["Humd"],
-                row["Pressure"],
-                row["Visib"],
-                row["WindSpeed"],
-                row["WindDir"],
-                row["Precipitation"],
-                row["Events"],
-                row["Conditions"],
-                z
-            )
-            for row in df.collect()
-        ]
+        data = []
+        for row in df.collect():
+            try:
+                time = datetime.datetime.strptime(row["Time"], '%Y-%m-%d %I:%M %p')
+                weather = Weather(
+                    time,
+                    row["Temp"],
+                    row["WindChill"],
+                    row["Humd"],
+                    row["Pressure"],
+                    row["Visib"],
+                    row["WindSpeed"],
+                    row["WindDir"],
+                    row["Precipitation"],
+                    row["Events"],
+                    row["Conditions"],
+                    z
+                )
+                data.append(weather)
+            except ValueError as e:
+                print(e)
+                continue
 
         data.sort(key=lambda x: x.date)
         airport_to_data[ap] = data
-
 
 
 if __name__ == '__main__':
