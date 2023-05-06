@@ -294,13 +294,16 @@ def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
 
 # Function to assign weather data to each geohash
 def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone, geocode_to_airport):
+    # Generator function to create the data list as an iterator
+    def generate_data_intervals(total_interval):
+        for _ in range(total_interval):
+            yield {'Temperature': [], 'Humidity': [], 'Pressure': [], 'Visibility': [], 'WindSpeed': [],
+                   'Precipitation': [], 'Condition': set(), 'Event': set()}
+
     for c in city_to_geohashes_traffic:
         geohash_to_weather = {}
         for g in city_to_geohashes_traffic[c]:
-            data = []
-            for i in range(total_interval):
-                data.append({'Temperature': [], 'Humidity': [], 'Pressure': [], 'Visibility': [], 'WindSpeed': [],
-                             'Precipitation': [], 'Condition': set(), 'Event': set()})
+            data = list(generate_data_intervals(total_interval))
 
             ap_list = geocode_to_airport[g]
             for a in ap_list:
