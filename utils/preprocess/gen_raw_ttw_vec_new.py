@@ -96,20 +96,21 @@ def return_time(x):
 
 
 # Function to return if the given time is day or night
-def returnDayLight(city_days_time, city, state, dt):
+def return_day_light(city_days_time, city, state, dt):
     sc = city + '-' + state
     days = city_days_time[sc]
-    d = str(dt.year) + '-' + str(dt.month) + '-' + str(dt.day)
+    d = dt.strftime('%Y-%m-%d')
     if d in days:
         r = days[d]
-        if ((r.sunrise[0] < dt.hour < r.sunset[0]) or
-                (r.sunrise[0] <= dt.hour < r.sunset[0] and dt.minute >= r.sunrise[1]) or
-                (r.sunrise[0] < dt.hour <= r.sunset[0] and dt.minute < r.sunset[1]) or
-                (r.sunrise[0] <= dt.hour <= r.sunset[0] and r.sunrise[1] <= dt.minute < r.sunset[1])):
+        sunrise = datetime.time(*r.sunrise)
+        sunset = datetime.time(*r.sunset)
+        if sunrise <= dt.time() <= sunset:
             return '1'
         else:
             return '0'
-
+    else:
+        print('Error: ' + sc + ' ' + d)
+        return '0'
 
 # Function to process the traffic data
 def proc_traffic_data(start, finish, begin, end):
