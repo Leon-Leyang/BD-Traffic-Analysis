@@ -25,9 +25,9 @@ if __name__ == "__main__":
 	city = "Austin"
 
 	# The files for features and labels
-	train_x_file = f"/data/temp/train_set/X_train_{city}.npy"
+	train_x_file = f"/data/temp/train_set/x_train_{city}.npy"
 	train_y_file = f"/data/temp/train_set/y_train_{city}.npy"
-	test_x_file = f"/data/temp/train_set/X_test_{city}.npy"
+	test_x_file = f"/data/temp/train_set/x_test_{city}.npy"
 	test_y_file = f"/data/temp/train_set/y_test_{city}.npy"
 
 	# Create the spark session
