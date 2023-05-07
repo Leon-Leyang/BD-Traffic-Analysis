@@ -119,7 +119,7 @@ def proc_traffic_data(start, finish, begin, end):
     start_str = start.strftime('%Y%m%d')
     finish_str = finish.strftime('%Y%m%d')
 
-    city_to_geohashes_traffic = {}
+    city_to_geohash = {}
     geocode_to_airport = {}
     airport_to_timezone = {}
 
@@ -143,6 +143,8 @@ def proc_traffic_data(start, finish, begin, end):
     else list(range(start, end + 1)), ArrayType(IntegerType()))
 
     for c in cities:
+        geohash_to_traffic = {}
+        city_to_geohash[c] = []
         z = time_zones[c]
         df = spark.read.csv(f"hdfs://localhost:9000/data/temp/T_{c}_{start_str}_{finish_str}.csv/*", header=True,
                             inferSchema=True)
@@ -202,23 +204,30 @@ def proc_traffic_data(start, finish, begin, end):
             "IntervalRange")).drop("IntervalRange")
         df_grouped = df.groupBy("Geohash", "Interval").agg({et: "sum" for et in event_types})
 
-        # Update city_to_geohashes_traffic dictionary
-        city_to_geohashes_traffic[c] = {}
-
         # Collect the grouped rows to make a list of dictionaries of event type sums ordered by the time interval index
         # for each geohash and interval
         grouped_rows = df_grouped.collect()
         for row in grouped_rows:
             geohash = row.Geohash
             interval = row.Interval
-            if geohash not in city_to_geohashes_traffic[c]:
-                city_to_geohashes_traffic[c][geohash] = [{} for _ in range(total_interval)]
+            if geohash not in city_to_geohash[c]:
+                city_to_geohash[c].append(geohash)
+                geohash_to_traffic[geohash] = [{} for _ in range(total_interval)]
 
             event_type_sums = {et: row[f"sum({et})"] for et in event_types}
             try:
-                city_to_geohashes_traffic[c][geohash][interval] = event_type_sums
+                geohash_to_traffic[geohash][interval] = event_type_sums
             except IndexError:
                 print(f"Error: Interval {interval} is out of range for geohash {geohash} in city {c}.")
+
+        # Check if the file exists in HDFS
+        # If it exists, delete it
+        if hdfs_client.status(f"/data/temp/{c}_geo2traffic.pickle", strict=False):
+            hdfs_client.delete(f"/data/temp/{c}_geo2traffic.pickle")
+
+        # Save the geohash_to_traffic data to HDFS using hdfs_client
+        with hdfs_client.write(f"/data/temp/{c}_geo2traffic.pickle") as writer:
+            pickle.dump(geohash_to_traffic, writer)
 
         # Update geocode_to_airport and aiport_to_timezone dictionaries
         df_airports = df.filter(length(df["AirportCode"]) > 3).select("Geohash", "AirportCode").distinct()
@@ -226,7 +235,7 @@ def proc_traffic_data(start, finish, begin, end):
             geocode_to_airport.setdefault(row.Geohash, set()).add(row.AirportCode)
             airport_to_timezone[row.AirportCode] = z
 
-    return city_to_geohashes_traffic, geocode_to_airport, airport_to_timezone
+    return city_to_geohash, geocode_to_airport, airport_to_timezone
 
 
 # Function to process the weather data
@@ -276,9 +285,9 @@ def proc_weather_data(airport_to_timezone):
 
 
 # Function to complement the missing airport data
-def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
-    for c in city_to_geohashes_traffic:
-        for g in city_to_geohashes_traffic[c]:
+def complement_missing_ap(city_to_geohash, geocode_to_airport):
+    for c in city_to_geohash:
+        for g in city_to_geohash[c]:
             if g not in geocode_to_airport:
                 gc = gh.decode_exactly(g)[0:2]
                 min_dist = 1000000000
@@ -295,16 +304,16 @@ def complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport):
 
 
 # Function to assign weather data to each geohash
-def assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone, geocode_to_airport):
+def assign_weather_data(city_to_geohash, airport_to_data, airport_to_timezone, geocode_to_airport):
     # Generator function to create the data list as an iterator
     def generate_data_intervals(total_interval):
         for _ in range(total_interval):
             yield {'Temperature': [], 'Humidity': [], 'Pressure': [], 'Visibility': [], 'WindSpeed': [],
                    'Precipitation': [], 'Condition': set(), 'Event': set()}
 
-    for c in city_to_geohashes_traffic:
+    for c in city_to_geohash:
         geohash_to_weather = {}
-        for g in city_to_geohashes_traffic[c]:
+        for g in city_to_geohash[c]:
             data = list(generate_data_intervals(total_interval))
 
             ap_list = geocode_to_airport[g]
@@ -424,16 +433,16 @@ if __name__ == '__main__':
     extract_t_data_4city(spark, t_data_path, start, finish)
 
     # Process the traffic data
-    city_to_geohashes_traffic, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
+    city_to_geohash, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
 
     # Complement the missing airport data
-    geocode_to_airport = complement_missing_ap(city_to_geohashes_traffic, geocode_to_airport)
+    geocode_to_airport = complement_missing_ap(city_to_geohash, geocode_to_airport)
 
     # Process the weather data
     airport_to_data = proc_weather_data(airport_to_timezone)
 
     # Assign weather data to each geohash
-    assign_weather_data(city_to_geohashes_traffic, airport_to_data, airport_to_timezone, geocode_to_airport)
+    assign_weather_data(city_to_geohash, airport_to_data, airport_to_timezone, geocode_to_airport)
 
     # Process the daylight data
     dl_path = "hdfs://localhost:9000/data/sample_daylight.csv"
