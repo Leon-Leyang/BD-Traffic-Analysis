@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from hdfs import InsecureClient
 from pyspark.sql import SparkSession
-from pyspark.ml.feature import OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from globals import *
 
 
@@ -22,8 +22,8 @@ spark = SparkSession.builder.appName("Train/test data generator").getOrCreate()
 
 # Function to encode HOD_cat to HOD_enx for one-hot encoding
 def onehot_encoder(train):
-    myEncoder = OneHotEncoder(sparse=False)
-    myEncoder.fit(train['HOD_cat'].values.reshape(-1, 1))
+    encoder = OneHotEncoder(sparse=False)
+    encoder.fit(train['HOD_cat'].values.reshape(-1, 1))
 
     onehot_encode = pd.concat([train.reset_index().drop('HOD_cat', 1),
                                pd.DataFrame(myEncoder.transform(train['HOD_cat'].values.reshape(-1, 1)),
