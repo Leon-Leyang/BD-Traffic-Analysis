@@ -97,7 +97,7 @@ def return_time(x):
 
 
 # Function to return if the given time is day or night
-def return_day_light(city_days_time, city, state, dt):
+def return_don(city_days_time, city, state, dt):
     sc = city + '-' + state
     days = city_days_time[sc]
     d = dt.strftime('%Y-%-m-%-d')
@@ -380,26 +380,26 @@ def proc_daylight_data(dl_path):
     return city_days_time
 
 
-# Function to calculate the daylight for each interval in each city
-def label_daylight_4interval(city_days_time):
-    city_to_interval_to_daylight = {}
+# Function to calculate day or night for each interval in each city
+def label_don_4interval(city_days_time):
+    city_to_interval_to_don = {}
     states = {'Houston': 'TX', 'Charlotte': 'NC', 'Dallas': 'TX', 'Atlanta': 'GA', 'Austin': 'TX', 'LosAngeles': 'CA'}
 
     for c in cities:
         d_begin = begin.replace(tzinfo=pytz.timezone(time_zones[c]))
         d_end = end.replace(tzinfo=pytz.timezone(time_zones[c]))
 
-        interval_to_daylight = {}
+        interval_to_don = {}
         interval = 0
         while d_begin < d_end:
-            dl = return_day_light(city_days_time, c, states[c], d_begin)
-            interval_to_daylight[interval] = dl
+            dl = return_don(city_days_time, c, states[c], d_begin)
+            interval_to_don[interval] = dl
             interval += 1
             d_begin += timedelta(seconds=15*60)
 
-        city_to_interval_to_daylight[c] = interval_to_daylight
+        city_to_interval_to_don[c] = interval_to_don
 
-    return city_to_interval_to_daylight
+    return city_to_interval_to_don
 
 
 if __name__ == '__main__':
@@ -422,5 +422,5 @@ if __name__ == '__main__':
     dl_path = "hdfs://localhost:9000/data/sample_daylight.csv"
     city_days_time = proc_daylight_data(dl_path)
 
-    # Label the daylight for each interval in each city
-    city_to_interval_to_daylight = label_daylight_4interval(city_days_time)
+    # Label day or night for each interval in each city
+    city_to_interval_to_don = label_don_4interval(city_days_time)
