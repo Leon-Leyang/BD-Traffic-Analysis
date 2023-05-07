@@ -1,6 +1,7 @@
 import getpass
 import pytz
 import pickle
+import numpy as np
 from hdfs import InsecureClient
 from datetime import time, timedelta
 from haversine import haversine
@@ -428,6 +429,73 @@ def label_dow_hod_4interval():
     return interval_to_dow_hod
 
 
+# Function to save the raw features to HDFS
+# Each vector represent a 15 minutes time interval for each geohash
+def save_raw_features(interval_to_dow_hod, city_to_interval_to_don):
+    traffic_tags = ['Accident', 'BrokenVehicle', 'Congestion', 'Construction', 'Event', 'FlowIncident', 'Other',
+                    'RoadBlocked']
+    weather_tags = ['Condition', 'Event', 'Humidity', 'Precipitation', 'Pressure', 'Temperature', 'Visibility',
+                    'WindSpeed']
+
+    for c in cities:
+        # Read the traffic and weather data from HDFS
+        with hdfs_client.read(f'/data/temp/{c}_geo2traffic.pickle') as reader:
+            geo2traffic = pickle.load(reader)
+        with hdfs_client.read(f'/data/temp/{c}_geo2weather.pickle') as reader:
+            geo2weather = pickle.load(reader)
+
+        # If the file exists, delete it before writing to it
+        if hdfs_client.status(f'/data/temp/{c}_geo2vec.csv', strict=False):
+            hdfs_client.delete(f'/data/temp/{c}_geo2vec.csv')
+
+        # Write the raw features to HDFS
+        with hdfs_client.write(f'/data/temp/{c}_geo2vec.csv', encoding='utf-8') as writer:
+            writer.write('Geohash,TimeStep,DOW,HOD,DayLight,T-Accident,T-BrokenVehicle,T-Congestion,T-Construction, '
+                         'T-Event,T-FlowIncident,T-Other,T-RoadBlocked,W-Humidity,W-Precipitation,W-Pressure, '
+                         'W-Temperature,W-Visibility,W-WindSpeed,W-Rain,W-Snow,W-Fog,W-Hail\n')
+
+            # Write the feature for each interval in each geohash to the file
+            for g in geo2traffic:
+                for i in range(total_interval):
+                    vec = []
+                    vec.append(g)
+                    vec.append(i)
+                    vec.append(interval_to_dow_hod[i][0])
+                    vec.append(interval_to_dow_hod[i][1])
+                    vec.append(city_to_interval_to_don[c][i])
+
+                    # Add traffic features
+                    for t in traffic_tags:
+                        vec.append(geo2traffic[g][i][t])
+
+                    # Add weather features
+                    vec_w = [0, 0, 0, 0]
+                    for w in weather_tags:
+                        if w == 'Condition' or w == 'Event':
+                            w_tags = geo2weather[g][i][w]
+                            for w_tag in w_tags:
+                                w_tag = w_tag.lower()
+                                if 'rain' in w_tag or 'drizzle' in w_tag or 'thunderstorm' in w_tag:
+                                    vec_w[0] = 1
+                                elif 'snow' in w_tag:
+                                    vec_w[1] = 1
+                                elif 'fog' in w_tag or 'haze' in w_tag or 'mist' in w_tag or 'smoke' in w_tag:
+                                    vec_w[2] = 1
+                                elif 'hail' in w_tag or 'ice pellets' in w_tag:
+                                    vec_w[3] = 1
+                        elif len(geo2weather[g][i][w]) == 0:
+                            vec.append(0)
+                        else:
+                            vec.append(np.mean(geo2weather[g][i][w]))
+                    for w_tag in vec_w:
+                        vec.append(w_tag)
+
+                    vec = [str(vec[i]) for i in range(len(vec))]
+                    vec = ','.join(vec) + '\n'
+
+                    writer.write(vec)
+
+
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
@@ -453,3 +521,6 @@ if __name__ == '__main__':
 
     # Label weekday or weekend and hour of a day for each interval
     interval_to_dow_hod = label_dow_hod_4interval()
+
+    # Save the raw features to HDFS
+    save_raw_features(interval_to_dow_hod, city_to_interval_to_don)
