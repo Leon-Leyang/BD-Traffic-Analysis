@@ -465,8 +465,12 @@ def save_raw_features(interval_to_dow_hod, city_to_interval_to_don):
                     vec.append(city_to_interval_to_don[c][i])
 
                     # Add traffic features
-                    for t in traffic_tags:
-                        vec.append(geo2traffic[g][i][t])
+                    if geo2traffic[g][i].keys():
+                        for t in traffic_tags:
+                            vec.append(geo2traffic[g][i][t])
+                    else:
+                        for _ in traffic_tags:
+                            vec.append(0)
 
                     # Add weather features
                     vec_w = [0, 0, 0, 0]
