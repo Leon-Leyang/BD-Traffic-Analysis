@@ -450,8 +450,8 @@ def save_raw_features(interval_to_dow_hod, city_to_interval_to_don):
 
         # Write the raw features to HDFS
         with hdfs_client.write(f'/data/temp/{c}_geo2vec.csv', encoding='utf-8') as writer:
-            writer.write('Geohash,TimeStep,DOW,HOD,DayLight,T-Accident,T-BrokenVehicle,T-Congestion,T-Construction, '
-                         'T-Event,T-FlowIncident,T-Other,T-RoadBlocked,W-Humidity,W-Precipitation,W-Pressure, '
+            writer.write('Geohash,TimeStep,DOW,HOD,DayLight,T-Accident,T-BrokenVehicle,T-Congestion,T-Construction,'
+                         'T-Event,T-FlowIncident,T-Other,T-RoadBlocked,W-Humidity,W-Precipitation,W-Pressure,'
                          'W-Temperature,W-Visibility,W-WindSpeed,W-Rain,W-Snow,W-Fog,W-Hail\n')
 
             # Write the feature for each interval in each geohash to the file
