@@ -65,7 +65,35 @@ def proc_poi_data(poi_path):
         pickle.dump(geohash_to_idx, writer)
 
 
+# Function to convert the NLP dataframe to a dictionary and save to HDFS
+def convert_nlp_df2dict(nlp_path):
+    # Read the CSV file into a PySpark dataframe
+    df = spark.read.csv(nlp_path, header=True)
+
+    # Define a UDF to convert the 'vec' column to a NumPy array
+    to_array_udf = udf(lambda vec: [float(x) for x in vec.split(' ')], ArrayType(DoubleType()))
+    df = df.withColumn("vec_array", to_array_udf("vec"))
+
+    # Convert the dataframe to a dictionary
+    NLP_dict = {}
+    for row in df.collect():
+        NLP_dict[row["Geohash"]] = row["vec_array"]
+
+    # Check if the file exists in HDFS
+    # If it exists, delete it
+    if hdfs_client.status(f"/data/temp/NLP_vect_dict.pickle", strict=False):
+        hdfs_client.delete(f"/data/temp/NLP_vect_dict.pickle")
+
+    # Save the NLP dictionary to HDFS using hdfs_client
+    with hdfs_client.write(f"/data/temp/NLP_vect_dict.pickle") as writer:
+        pickle.dump(NLP_dict, writer)
+
+
 if __name__ == '__main__':
     # Process the POI data
-    poi_path = "hdfs://localhost:9000/data/poi/GeohashMap.csv"
+    poi_path = "hdfs://localhost:9000/data/geohash_to_poi_vec.csv"
     proc_poi_data(poi_path)
+
+    # Process the NLP data
+    nlp_path = "hdfs://localhost:9000/data/temp/geohash_to_text_vec.csv"
+    convert_nlp_df2dict(nlp_path)
