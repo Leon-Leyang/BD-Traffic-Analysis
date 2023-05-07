@@ -115,7 +115,7 @@ def return_don(city_days_time, city, state, dt):
         return '0'
 
 # Function to process the traffic data
-def proc_traffic_data(start, finish, begin, end):
+def proc_traffic_data(start, finish):
     # Convert the datetime object to a string in the format 'YYYYMMDD'
     start_str = start.strftime('%Y%m%d')
     finish_str = finish.strftime('%Y%m%d')
