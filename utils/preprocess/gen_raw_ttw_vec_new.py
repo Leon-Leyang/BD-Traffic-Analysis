@@ -416,6 +416,8 @@ def label_dow_hod_4interval():
         interval += 1
         d_begin += timedelta(seconds=15*60)
 
+    return interval_to_dow_hod
+
 
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
@@ -439,3 +441,6 @@ if __name__ == '__main__':
 
     # Label day or night for each interval in each city
     city_to_interval_to_don = label_don_4interval(city_days_time)
+
+    # Label weekday or weekend and hour of a day for each interval
+    interval_to_dow_hod = label_dow_hod_4interval()
