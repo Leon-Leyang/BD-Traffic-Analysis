@@ -25,7 +25,7 @@ def proc_poi_data(poi_path):
                 'Stop', 'Traffic_Calming', 'Traffic_Signal', 'Turning_Circle', 'Turning_Loop']
 
     # Read the CSV file into a PySpark dataframe and select the POI columns
-    df = spark.read.csv(poi_path, header=True).select(*(col(c).cast("integer") for c in poi_cols))
+    df = spark.read.csv(poi_path, header=True).select("Geohash", *(col(c).cast("integer") for c in poi_cols))
 
     # Scale the POI vectors using MinMaxScaler
     vec_assembler = VectorAssembler(inputCols=poi_cols, outputCol="features")
