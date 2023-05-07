@@ -18,7 +18,7 @@ username = getpass.getuser()
 hdfs_client = InsecureClient('http://localhost:9870', user=username)
 
 # Initialize the spark session
-spark = SparkSession.builder.appName("NLP vector generator").getOrCreate()
+spark = SparkSession.builder.appName("Raw vector generator").getOrCreate()
 
 # time interval to sample data for
 start = datetime(2018, 6, 1)
