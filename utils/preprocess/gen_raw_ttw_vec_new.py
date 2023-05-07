@@ -412,7 +412,7 @@ def label_don_4interval(city_days_time):
     return city_to_interval_to_don
 
 
-# Function to calculate the weekday or weekend and hour of a day for each interval
+# Function to calculate day of week and hour of a day for each interval
 def label_dow_hod_4interval():
     interval_to_dow_hod = {}
     d_begin = begin.replace(tzinfo=pytz.utc)
@@ -523,7 +523,7 @@ if __name__ == '__main__':
     # Label day or night for each interval in each city
     city_to_interval_to_don = label_don_4interval(city_days_time)
 
-    # Label weekday or weekend and hour of a day for each interval
+    # Label day of week and hour of a day for each interval
     interval_to_dow_hod = label_dow_hod_4interval()
 
     # Save the raw features to HDFS
