@@ -505,7 +505,7 @@ if __name__ == '__main__':
     extract_t_data_4city(spark, t_data_path, start, finish)
 
     # Process the traffic data
-    city_to_geohash, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish, begin, end)
+    city_to_geohash, geocode_to_airport, airport_to_timezone = proc_traffic_data(start, finish)
 
     # Complement the missing airport data
     geocode_to_airport = complement_missing_ap(city_to_geohash, geocode_to_airport)
