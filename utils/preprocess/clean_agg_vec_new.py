@@ -2,7 +2,7 @@ import getpass
 import pickle
 from hdfs import InsecureClient
 from pyspark.sql import SparkSession, Window
-from pyspark.sql.functions import udf, col, lag
+from pyspark.sql.functions import col, lag
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import MinMaxScaler, VectorAssembler
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StringType
