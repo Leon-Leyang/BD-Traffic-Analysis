@@ -402,6 +402,21 @@ def label_don_4interval(city_days_time):
     return city_to_interval_to_don
 
 
+# Function to calculate the weekday or weekend and hour of a day for each interval
+def label_dow_hod_4interval():
+    interval_to_dow_hod = {}
+    d_begin = begin.replace(tzinfo=pytz.utc)
+    d_end = end.replace(tzinfo=pytz.utc)
+    interval = 0
+
+    while d_begin < d_end:
+        dow = d_begin.weekday()
+        hod = d_begin.hour
+        interval_to_dow_hod[interval] = [dow, hod]
+        interval += 1
+        d_begin += timedelta(seconds=15*60)
+
+
 if __name__ == '__main__':
     # Extract the traffic data for each city during the time interval
     extract_t_data_4city(spark, t_data_path, start, finish)
