@@ -26,7 +26,7 @@ def onehot_encoder(train):
     encoder.fit(train['HOD_cat'].values.reshape(-1, 1))
 
     onehot_encode = pd.concat([train.reset_index().drop('HOD_cat', 1),
-                               pd.DataFrame(myEncoder.transform(train['HOD_cat'].values.reshape(-1, 1)),
+                               pd.DataFrame(encoder.transform(train['HOD_cat'].values.reshape(-1, 1)),
                                             columns=['HOD_en0', 'HOD_en1', 'HOD_en2', 'HOD_en3', 'HOD_en4'])],
                               axis=1).reindex()
     return onehot_encode.drop('index', 1)
