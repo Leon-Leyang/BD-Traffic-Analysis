@@ -12,7 +12,13 @@ def load_hdfs_npy(hdfs_client, path):
 	with hdfs_client.read(path) as f:
 		content = f.read()
 	return np.load(BytesIO(content), allow_pickle=True)	
-	
+
+
+def compute_class_distribution(labels):
+	unique_labels, counts = np.unique(labels, return_counts=True)
+	distribution = dict(zip(unique_labels, counts))
+	return distribution
+
 
 if __name__ == "__main__":
 	# Get the user name
@@ -38,6 +44,11 @@ if __name__ == "__main__":
 	train_y = load_hdfs_npy(hdfs_client, train_y_file).astype(int)
 	test_x = load_hdfs_npy(hdfs_client, test_x_file).astype(float)
 	test_y = load_hdfs_npy(hdfs_client, test_y_file).astype(int)
+
+	train_y_distribution = compute_class_distribution(train_y)
+	test_y_distribution = compute_class_distribution(test_y)
+	print(f"Training set class distribution: {train_y_distribution}")
+	print(f"Test set class distribution: {test_y_distribution}")
 
 	# Convert feature and label arrays to list of tuples
 	train_data = [(Vectors.dense(f), l.tolist()) for f, l in zip(train_x, train_y)]
